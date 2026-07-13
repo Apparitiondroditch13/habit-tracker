@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow — трекер привычек</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep-1:#040a18;
+    --deep-2:#0a1e3d;
+    --deep-3:#0e3a63;
+    --cyan-1:#38bdf8;
+    --cyan-2:#7dd3fc;
+    --cyan-3:#a5f3fc;
+    --glow:#60a5fa;
+    --text-hi:#eef6ff;
+    --text-mid:#9fb8d6;
+    --text-low:#5f7ba0;
+    --glass-bg:rgba(255,255,255,0.06);
+    --glass-bg-strong:rgba(255,255,255,0.1);
+    --glass-border:rgba(180,220,255,0.25);
+    --radius-l:22px;
+    --radius-m:14px;
+    --ease:cubic-bezier(.16,.84,.44,1);
+    --font-display:'Outfit',-apple-system,sans-serif;
+    --font-body:'Inter',-apple-system,sans-serif;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:var(--font-body);
+    color:var(--text-hi);
+    background:var(--deep-1);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--cyan-1);color:#04101f;}
+
+  /* ---------- Flowing aqua background ---------- */
+  .bg-fixed{
+    position:fixed;inset:0;
+    z-index:-4;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, var(--deep-3) 0%, transparent 60%),
+      linear-gradient(200deg,var(--deep-1) 0%,var(--deep-2) 45%,var(--deep-1) 100%);
+    background-size:100% 100%, 200% 200%;
+    animation:deepShift 26s ease-in-out infinite;
+  }
+  @keyframes deepShift{
+    0%,100%{background-position:50% 0%, 0% 50%;}
+    50%{background-position:50% 20%, 100% 50%;}
+  }
+
+  .wave-layer{
+    position:fixed;inset:-10% -10%;
+    z-index:-3;
+    pointer-events:none;
+  }
+  .wave{
+    position:absolute;
+    border-radius:45%;
+    filter:blur(70px);
+    opacity:.55;
+    mix-blend-mode:screen;
+  }
+  .wave-a{
+    width:60vw;height:60vw;
+    top:-15%;left:-10%;
+    background:radial-gradient(circle,var(--cyan-1),transparent 65%);
+    animation:driftA 24s ease-in-out infinite;
+  }
+  .wave-b{
+    width:55vw;height:55vw;
+    bottom:-20%;right:-10%;
+    background:radial-gradient(circle,var(--glow),transparent 65%);
+    animation:driftB 20s ease-in-out infinite;
+  }
+  .wave-c{
+    width:45vw;height:45vw;
+    top:35%;left:35%;
+    background:radial-gradient(circle,var(--cyan-3),transparent 65%);
+    opacity:.35;
+    animation:driftC 30s ease-in-out infinite;
+  }
+  @keyframes driftA{
+    0%,100%{transform:translate(0,0) scale(1);}
+    33%{transform:translate(12vw,10vh) scale(1.15);}
+    66%{transform:translate(4vw,18vh) scale(.9);}
+  }
+  @keyframes driftB{
+    0%,100%{transform:translate(0,0) scale(1);}
+    50%{transform:translate(-14vw,-12vh) scale(1.2);}
+  }
+  @keyframes driftC{
+    0%,100%{transform:translate(0,0) scale(1);}
+    40%{transform:translate(-16vw,10vh) scale(.85);}
+    70%{transform:translate(8vw,-10vh) scale(1.1);}
+  }
+
+  /* shimmering light sweep, like light on water */
+  .shimmer{
+    position:fixed;inset:0;
+    z-index:-2;
+    pointer-events:none;
+    background:linear-gradient(115deg,
+      transparent 30%,
+      rgba(165,243,252,.06) 45%,
+      rgba(165,243,252,.14) 50%,
+      rgba(165,243,252,.06) 55%,
+      transparent 70%);
+    background-size:300% 300%;
+    animation:sweep 9s linear infinite;
+  }
+  @keyframes sweep{
+    0%{background-position:0% 0%;}
+    100%{background-position:100% 100%;}
+  }
+
+  .grain{
+    position:fixed;inset:0;
+    z-index:-1;
+    pointer-events:none;
+    opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px;}
+
+  header{
+    padding:40px 0 10px;
+  }
+  header .wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+  .brand{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:22px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand-dot{
+    width:12px;height:12px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--cyan-3), var(--cyan-1) 60%, var(--glow));
+    box-shadow:0 0 16px var(--cyan-1);
+  }
+  .date-today{
+    font-size:14px;color:var(--text-mid);
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- Glass panel base ---------- */
+  .glass{
+    position:relative;
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border-radius:var(--radius-l);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.25),
+      0 20px 50px -20px rgba(0,20,50,.6);
+    overflow:hidden;
+  }
+  .glass::before{
+    content:'';
+    position:absolute;top:0;left:0;right:0;height:50%;
+    background:linear-gradient(180deg, rgba(255,255,255,.14), transparent);
+    pointer-events:none;
+  }
+
+  /* ---------- Stats overview ---------- */
+  .stats-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+    margin:30px 0 40px;
+  }
+  @media(max-width:760px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+  .stat-card{
+    padding:22px 20px;
+    text-align:left;
+  }
+  .stat-num{
+    font-family:var(--font-display);
+    font-size:32px;
+    font-weight:700;
+    background:linear-gradient(120deg,var(--cyan-3),var(--cyan-1));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    line-height:1;
+    margin-bottom:6px;
+  }
+  .stat-label{font-size:13px;color:var(--text-mid);}
+
+  /* ---------- Add habit ---------- */
+  .add-panel{
+    padding:26px 28px;
+    margin-bottom:36px;
+  }
+  .add-panel h2{
+    font-family:var(--font-display);
+    font-size:17px;
+    font-weight:600;
+    margin-bottom:16px;
+    color:var(--text-hi);
+  }
+  .add-form{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .emoji-picker{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .emoji-opt{
+    width:40px;height:40px;
+    border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+    background:rgba(255,255,255,.05);
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:transform .25s var(--ease), border-color .25s var(--ease), background .25s var(--ease);
+  }
+  .emoji-opt:hover{transform:translateY(-2px);background:rgba(255,255,255,.1);}
+  .emoji-opt.selected{
+    border-color:var(--cyan-1);
+    background:rgba(56,189,248,.18);
+    box-shadow:0 0 14px rgba(56,189,248,.35);
+  }
+  #habitName{
+    flex:1;
+    min-width:200px;
+    padding:12px 16px;
+    border-radius:12px;
+    border:1px solid var(--glass-border);
+    background:rgba(255,255,255,.05);
+    color:var(--text-hi);
+    font-family:var(--font-body);
+    font-size:14.5px;
+    outline:none;
+    transition:border-color .25s var(--ease), background .25s var(--ease);
+  }
+  #habitName::placeholder{color:var(--text-low);}
+  #habitName:focus{border-color:var(--cyan-1);background:rgba(255,255,255,.08);}
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 24px;
+    border-radius:100px;
+    font-weight:600;
+    font-size:14.5px;
+    border:none;
+    cursor:pointer;
+    font-family:var(--font-body);
+    transition:transform .3s var(--ease), box-shadow .3s var(--ease), filter .3s var(--ease);
+  }
+  .btn-primary{
+    background:linear-gradient(120deg,var(--cyan-1),var(--glow));
+    color:#04101f;
+    box-shadow:0 8px 24px -6px rgba(56,189,248,.6);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 30px -6px rgba(56,189,248,.75);}
+  .btn-ghost{
+    background:transparent;
+    color:var(--text-mid);
+    border:1px solid var(--glass-border);
+  }
+  .btn-ghost:hover{color:var(--cyan-2);border-color:var(--cyan-1);}
+
+  /* ---------- Habits list ---------- */
+  .habits-list{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    margin-bottom:60px;
+  }
+  .habit-card{
+    padding:22px 24px;
+    display:grid;
+    grid-template-columns:auto 1fr auto auto;
+    align-items:center;
+    gap:20px;
+    transition:transform .35s var(--ease), border-color .35s var(--ease);
+  }
+  .habit-card:hover{transform:translateY(-3px);border-color:rgba(125,211,252,.45);}
+  @media(max-width:640px){
+    .habit-card{grid-template-columns:auto 1fr; grid-template-areas:"icon name" "icon meta" "actions actions";}
+    .habit-meta-wrap{grid-area:meta;}
+    .habit-actions{grid-area:actions; justify-self:start; margin-top:10px;}
+  }
+
+  .habit-icon{
+    width:50px;height:50px;
+    border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;
+    background:rgba(255,255,255,.06);
+    border:1px solid var(--glass-border);
+    flex-shrink:0;
+  }
+  .habit-info h3{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:16.5px;
+    margin-bottom:6px;
+  }
+  .heatmap{
+    display:flex;
+    gap:4px;
+  }
+  .heat-cell{
+    width:16px;height:16px;
+    border-radius:5px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.05);
+    transition:background .3s var(--ease), box-shadow .3s var(--ease);
+  }
+  .heat-cell.filled{
+    background:linear-gradient(135deg,var(--cyan-2),var(--cyan-1));
+    box-shadow:0 0 8px rgba(56,189,248,.55);
+    border-color:transparent;
+  }
+  .streak-badge{
+    font-size:12px;
+    color:var(--cyan-2);
+    margin-top:8px;
+    font-variant-numeric:tabular-nums;
+  }
+  .habit-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .check-btn{
+    width:46px;height:46px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.06);
+    border:1.5px solid var(--glass-border);
+    color:var(--text-mid);
+    cursor:pointer;
+    transition:all .3s var(--ease);
+    flex-shrink:0;
+  }
+  .check-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.4;}
+  .check-btn.done{
+    background:linear-gradient(135deg,var(--cyan-2),var(--cyan-1));
+    border-color:transparent;
+    color:#04101f;
+    box-shadow:0 0 20px rgba(56,189,248,.6);
+    transform:scale(1.05);
+  }
+  .del-btn{
+    width:36px;height:36px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;
+    border:none;
+    color:var(--text-low);
+    cursor:pointer;
+    transition:color .25s var(--ease), background .25s var(--ease);
+  }
+  .del-btn:hover{color:#f87171;background:rgba(248,113,113,.1);}
+  .del-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;}
+
+  .empty-state{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--text-mid);
+  }
+  .empty-state .emoji-big{font-size:40px;margin-bottom:14px;}
+  .empty-state p{font-size:14.5px;}
+
+  footer{
+    padding:30px 0 50px;
+    text-align:center;
+    font-size:12.5px;
+    color:var(--text-low);
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-fixed"></div>
+<div class="wave-layer">
+  <div class="wave wave-a"></div>
+  <div class="wave wave-b"></div>
+  <div class="wave wave-c"></div>
+</div>
+<div class="shimmer"></div>
+<div class="grain"></div>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><span class="brand-dot"></span>Flow</div>
+    <div class="date-today" id="dateToday"></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="stats-row">
+    <div class="stat-card glass">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">всего привычек</div>
+    </div>
+    <div class="stat-card glass">
+      <div class="stat-num" id="statToday">0</div>
+      <div class="stat-label">выполнено сегодня</div>
+    </div>
+    <div class="stat-card glass">
+      <div class="stat-num" id="statBest">0</div>
+      <div class="stat-label">лучший стрик</div>
+    </div>
+    <div class="stat-card glass">
+      <div class="stat-num" id="statPercent">0%</div>
+      <div class="stat-label">прогресс за неделю</div>
+    </div>
+  </div>
+
+  <div class="add-panel glass">
+    <h2>Новая привычка</h2>
+    <div class="add-form">
+      <div class="emoji-picker" id="emojiPicker">
+        <div class="emoji-opt selected" data-emoji="💧">💧</div>
+        <div class="emoji-opt" data-emoji="📚">📚</div>
+        <div class="emoji-opt" data-emoji="🏃">🏃</div>
+        <div class="emoji-opt" data-emoji="🧘">🧘</div>
+        <div class="emoji-opt" data-emoji="😴">😴</div>
+        <div class="emoji-opt" data-emoji="✍️">✍️</div>
+        <div class="emoji-opt" data-emoji="🥗">🥗</div>
+      </div>
+      <input type="text" id="habitName" placeholder="Например: Пить воду">
+      <button class="btn btn-primary" id="addBtn">Добавить</button>
+    </div>
+  </div>
+
+  <div class="habits-list" id="habitsList"></div>
+
+</main>
+
+<footer>Данные хранятся локально в вашем браузере · Flow tracker</footer>
+
+<script>
+// ---------- State ----------
+const STORAGE_KEY = 'flow_habits_v1';
+let selectedEmoji = '💧';
+let habits = loadHabits();
+
+function loadHabits(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveHabits(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+}
+
+function todayKey(d = new Date()){
+  return d.toISOString().slice(0,10);
+}
+function daysAgoKey(n){
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return todayKey(d);
+}
+
+// ---------- Date header ----------
+document.getElementById('dateToday').textContent = new Date().toLocaleDateString('ru-RU', {
+  weekday:'long', day:'numeric', month:'long'
+});
+
+// ---------- Emoji picker ----------
+const emojiPicker = document.getElementById('emojiPicker');
+emojiPicker.addEventListener('click', (e) => {
+  const opt = e.target.closest('.emoji-opt');
+  if(!opt) return;
+  emojiPicker.querySelectorAll('.emoji-opt').forEach(o => o.classList.remove('selected'));
+  opt.classList.add('selected');
+  selectedEmoji = opt.dataset.emoji;
+});
+
+// ---------- Add habit ----------
+const nameInput = document.getElementById('habitName');
+document.getElementById('addBtn').addEventListener('click', addHabit);
+nameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') addHabit(); });
+
+function addHabit(){
+  const name = nameInput.value.trim();
+  if(!name) { nameInput.focus(); return; }
+  habits.push({
+    id: Date.now().toString(36),
+    name,
+    emoji: selectedEmoji,
+    log: {} // dateKey -> true
+  });
+  nameInput.value = '';
+  saveHabits();
+  render();
+}
+
+// ---------- Toggle / delete ----------
+function toggleToday(id){
+  const h = habits.find(x => x.id === id);
+  if(!h) return;
+  const key = todayKey();
+  if(h.log[key]) delete h.log[key];
+  else h.log[key] = true;
+  saveHabits();
+  render();
+}
+function deleteHabit(id){
+  habits = habits.filter(x => x.id !== id);
+  saveHabits();
+  render();
+}
+
+// ---------- Streak calc ----------
+function getStreak(h){
+  let streak = 0;
+  let i = 0;
+  // if today not done yet, start counting from yesterday
+  let d = new Date();
+  if(!h.log[todayKey(d)]){
+    d.setDate(d.getDate()-1);
+  }
+  while(h.log[todayKey(d)]){
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+// ---------- Render ----------
+const listEl = document.getElementById('habitsList');
+
+function render(){
+  // stats
+  const total = habits.length;
+  const doneToday = habits.filter(h => h.log[todayKey()]).length;
+  const bestStreak = habits.reduce((m,h) => Math.max(m, getStreak(h)), 0);
+
+  let weekTotal = 0, weekDone = 0;
+  habits.forEach(h => {
+    for(let i=0;i<7;i++){
+      weekTotal++;
+      if(h.log[daysAgoKey(i)]) weekDone++;
+    }
+  });
+  const weekPercent = weekTotal ? Math.round((weekDone/weekTotal)*100) : 0;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statToday').textContent = doneToday;
+  document.getElementById('statBest').textContent = bestStreak;
+  document.getElementById('statPercent').textContent = weekPercent + '%';
+
+  // list
+  if(habits.length === 0){
+    listEl.innerHTML = `
+      <div class="empty-state glass">
+        <div class="emoji-big">🌊</div>
+        <p>Пока нет привычек — добавьте первую выше</p>
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = habits.map(h => {
+    const streak = getStreak(h);
+    const doneToday = !!h.log[todayKey()];
+    const cells = Array.from({length:14}, (_,i) => 13 - i).map(daysAgo => {
+      const filled = !!h.log[daysAgoKey(daysAgo)];
+      return `<div class="heat-cell ${filled ? 'filled':''}" title="${daysAgoKey(daysAgo)}"></div>`;
+    }).join('');
+
+    return `
+      <div class="habit-card glass">
+        <div class="habit-icon">${h.emoji}</div>
+        <div class="habit-info">
+          <h3>${escapeHtml(h.name)}</h3>
+          <div class="heatmap">${cells}</div>
+          <div class="streak-badge">${streak > 0 ? `🔥 ${streak} ${dayWord(streak)} подряд` : 'начните серию сегодня'}</div>
+        </div>
+        <div class="habit-actions">
+          <button class="check-btn ${doneToday ? 'done':''}" onclick="toggleToday('${h.id}')" title="Отметить сегодня">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <button class="del-btn" onclick="deleteHabit('${h.id}')" title="Удалить">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function dayWord(n){
+  const mod10 = n % 10, mod100 = n % 100;
+  if(mod10 === 1 && mod100 !== 11) return 'день';
+  if([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return 'дня';
+  return 'дней';
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+render();
+</script>
+
+</body>
+</html>
